@@ -1,0 +1,292 @@
+{
+  "name": "My workflow 8",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        80
+      ],
+      "id": "d4c7c3f4-5613-4286-bd7d-602482a98d28",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1sdiouK6f8yl4jX2T7L9OsI-2PPdFXqZdRI68EOXuLak",
+          "mode": "list",
+          "cachedResultName": "Tasks",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sdiouK6f8yl4jX2T7L9OsI-2PPdFXqZdRI68EOXuLak/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1sdiouK6f8yl4jX2T7L9OsI-2PPdFXqZdRI68EOXuLak/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        80
+      ],
+      "id": "3d60f027-a72f-4792-be85-a594ae76db7d",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "5n1ZTwrHvTy8E86N",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst projectsMap = {};\n\nfor (const item of items) {\n  const t = item.json;\n  const deadline = new Date(t.deadline);\n  const daysLate = t.status !== 'مكتملة' ? Math.floor((now - deadline) / (1000*60*60*24)) : 0;\n\n  if (!projectsMap[t.projectName]) {\n    projectsMap[t.projectName] = { projectName: t.projectName, totalTasks: 0, completedTasks: 0, lateTasks: 0, maxDaysLate: 0, lateTasksList: [] };\n  }\n  const p = projectsMap[t.projectName];\n  p.totalTasks++;\n  if (t.status === 'مكتملة') p.completedTasks++;\n  if (daysLate > 0) {\n    p.lateTasks++;\n    p.maxDaysLate = Math.max(p.maxDaysLate, daysLate);\n    p.lateTasksList.push(t.taskName + ' (متأخرة ' + daysLate + ' يوم)');\n  }\n}\n\nreturn Object.values(projectsMap).map(p => ({ json: {\n  ...p,\n  completionRate: ((p.completedTasks / p.totalTasks) * 100).toFixed(0),\n  lateTasksList: p.lateTasksList.join(', ')\n} }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        80
+      ],
+      "id": "8eed7d87-1c90-4f4e-972f-76537905b8cc",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=أنت مدير مشاريع خبير. حلل بيانات هذا المشروع وحدد مستوى الخطورة الإجمالي وسببه، مع اقتراح إجراء تصحيحي. أعد النتيجة كـ JSON فقط: {\"risk_level\": \"منخفض/متوسط/عالي\", \"reasoning\": \"...\", \"suggested_action\": \"...\"}\n\nالمشروع: {{ $json.projectName }}\nنسبة الإنجاز: {{ $json.completionRate }}%\nعدد المهام المتأخرة: {{ $json.lateTasks }} من {{ $json.totalTasks }}\nأقصى تأخير: {{ $json.maxDaysLate }} يوم\nالمهام المتأخرة: {{ $json.lateTasksList }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        80
+      ],
+      "id": "dab218e1-c4a4-4425-9f57-7d4a169667fd",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        744,
+        296
+      ],
+      "id": "36243721-6c83-4668-b378-bfa68b8dda7f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "g38xyssK5TRcl82w",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output ?? $json.text ?? '';\n\nconst cleaned = String(raw)\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst parsed = JSON.parse(cleaned);\n\nconst codeData = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: {\n      ...codeData,\n      ...parsed\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        80
+      ],
+      "id": "92ff18f9-9c8b-4b54-85f9-0315c22c57cd",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9fd0cf2f-f92d-4135-ae93-85d986c1ce35",
+              "leftValue": "={{ $json.risk_level }}",
+              "rightValue": "عالي",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1248,
+        80
+      ],
+      "id": "e111c20e-0d04-4dab-8db8-2c18f441fa5b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "1120179307",
+        "text": "=المشروع: {{ $json.projectName }} نسبة الإنجاز: {{ $json.completionRate }}% مهام متأخرة: {{ $json.lateTasksList }}  تحليل AI: {{ $json.reasoning }} الإجراء المقترح: {{ $json.suggested_action }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        -16
+      ],
+      "id": "418b3575-65e5-4fe0-b5e1-00be02dff99b",
+      "name": "Send a text message",
+      "webhookId": "e490460b-07a2-4632-9e80-c9f245db2cd7",
+      "credentials": {
+        "telegramApi": {
+          "id": "8XXAIGIrYUutGL4l",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "fhm156@hotmail.com",
+        "subject": "=🔴 تقرير خطورة: {{ $json.projectName }}",
+        "message": "=<div dir=\"rtl\" style=\"font-family: Arial, sans-serif; line-height: 1.8; text-align: right;\">    <h2>🔴 تقرير مخاطر المشروع</h2>    <p>     <strong>المشروع:</strong>     {{ $json.projectName }}   </p>    <p>     <strong>نسبة الإنجاز:</strong>     {{ $json.completionRate }}%   </p>    <p>     <strong>المهام المتأخرة:</strong><br>     {{ $json.lateTasksList }}   </p>    <hr>    <h3>🤖 تحليل AI</h3>    <p>     {{ $json.reasoning }}   </p>    <h3>✅ الإجراء المقترح</h3>    <p>     {{ $json.suggested_action }}   </p>  </div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1472,
+        176
+      ],
+      "id": "3a972037-7245-488e-8886-b5a9bc72718f",
+      "name": "Send a message",
+      "webhookId": "6ab0d3da-df05-46e8-b2ae-bea46bc76e99",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "JDWqPw08fOqLMwmh",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1cb2a8b7-01b5-4c88-92a7-443397a4b22c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a5a684b75324e6d2c88eba78c40965ea385652d197518547fda9971ebd20d242"
+  },
+  "nodeGroups": [],
+  "id": "Sm59mtc7CHINHeLP",
+  "tags": []
+}
