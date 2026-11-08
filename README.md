@@ -2,7 +2,7 @@
 
 I built this n8n workflow to monitor project progress, identify overdue tasks, and use AI to evaluate project risks and recommend corrective actions.
 
-<img width="915" height="254" alt="image" src="https://github.com/user-attachments/assets/f47e3a2e-c153-48ec-b018-db8aaefdc691" />
+<img width="915" height="254" alt="Project Risk Monitoring workflow demo" src="https://github.com/user-attachments/assets/f47e3a2e-c153-48ec-b018-db8aaefdc691" />
 
 ## How it works
 
